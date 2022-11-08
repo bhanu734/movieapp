@@ -25,12 +25,37 @@ struct MenuBody: Codable {
 struct Menu: Codable {
     let id: Int?
     let friendlyURL, seoDescription, title, type: String?
+    var isselected: Bool? = false
 
     enum CodingKeys: String, CodingKey {
         case id
         case friendlyURL = "friendly_url"
         case seoDescription = "seo_description"
         case title, type
+        case isselected
+    }
+}
+
+struct Setting {
+    let title: String?
+    let caption: String?
+    let settingtype: SettingType?
+    
+}
+
+enum SettingType {
+    case account
+    case language
+    case myactivity
+    case termsofuse
+    case privacy
+    case contact
+    case aboutus
+    case AppVersion
+    
+    
+    func selecteditem() {
+        
     }
 }
 

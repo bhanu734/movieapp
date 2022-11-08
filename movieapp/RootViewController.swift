@@ -22,6 +22,9 @@ class RootViewController: UIViewController, SettingTableViewCellDelegate {
     
     func SettingsTapped() {
         print("setting Tapped")
+        issetting = true
+        menuTapped()
+        homeTableview.reloadData()
     }
     
 
@@ -35,11 +38,13 @@ class RootViewController: UIViewController, SettingTableViewCellDelegate {
     @IBOutlet weak var homeTitle : UILabel!
     
     var isMenuOpen: Bool = false
-    var MenuData: [Menu] = []
-    var homeData: [Playlist] = []
+//    var MenuData: [Menu] = []
+//    var homeData: [Playlist] = []
     var titletext: String = ""
+    var settingsData : [Setting] = []
+    var issetting : Bool = false
     
-    var allHomeData : [String: HomeData] = [:]
+//    var allHomeData : [String: HomeData] = [:]
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -51,6 +56,7 @@ class RootViewController: UIViewController, SettingTableViewCellDelegate {
         homeviewwidth.constant = UIScreen.main.bounds.width
         
         homeTableview.register(UINib(nibName: "CarousalTableViewCell", bundle: nil), forCellReuseIdentifier: "CarousalTableViewCell")
+        homeTableview.register(UINib(nibName: "settingitemTableViewCell", bundle: nil), forCellReuseIdentifier: "settingitemTableViewCell")
         homeTableview.delegate = self
         homeTableview.dataSource = self
         
@@ -58,9 +64,20 @@ class RootViewController: UIViewController, SettingTableViewCellDelegate {
         menuleading.constant = -menuViewWidth
 
         getMenuData()
-        
+        createSettingsdata()
     }
-    
+    func createSettingsdata () {
+//        settingsData = []
+        
+        settingsData.append(Setting(title: "Account", caption: "sign into acess", settingtype: SettingType.account))
+        settingsData.append(Setting(title: "Language", caption: "Change Interface language", settingtype: SettingType.language))
+        settingsData.append(Setting(title: "My Actiivity", caption: "Manage your all activities", settingtype: SettingType.myactivity))
+        settingsData.append(Setting(title: "Contact", caption: "Want to contact us?", settingtype: SettingType.contact))
+        settingsData.append(Setting(title: "Terms of use", caption: "App Terms and Conditions", settingtype: SettingType.termsofuse))
+        settingsData.append(Setting(title: "About us", caption: "Read usefull Information about App", settingtype: SettingType.aboutus))
+        settingsData.append(Setting(title: "Privacy", caption: "Read all About Privacy Policy", settingtype: SettingType.privacy))
+        settingsData.append(Setting(title: "App version", caption: "5.11 Version", settingtype: SettingType.AppVersion))
+    }
 
      @IBAction func menuTapped () {
         if isMenuOpen {
@@ -95,9 +112,9 @@ class RootViewController: UIViewController, SettingTableViewCellDelegate {
         URLSession.shared.dataTask(with: urlRequest) { data, response, error in
             if let data = data{
                 let menuModel = try? JSONDecoder().decode(menumodel.self , from: data)
-                self.MenuData = menuModel?.body?.data ?? []
+                AppData.shared.MenuData = menuModel?.body?.data ?? []
                 
-                if let homeId = self.MenuData[0].id{
+                if let homeId = AppData.shared.MenuData[0].id{
                     self.getHomeData(homeid: String(homeId))
                 }
                 DispatchQueue.main.async {
@@ -129,9 +146,9 @@ class RootViewController: UIViewController, SettingTableViewCellDelegate {
         URLSession.shared.dataTask(with: urlRequest) { data, response, error in
             if let data = data {
                 if let homemodel = try? JSONDecoder().decode(HomeModel.self, from: data){
-                    self.homeData = homemodel.response?.data?.playlists ?? []
+                    AppData.shared.homeData = homemodel.response?.data?.playlists ?? []
                     self.titletext = homemodel.response?.data?.title ?? ""
-                    self.allHomeData[homeid] = homemodel.response?.data
+                    AppData.shared.allHomeData[homeid] = homemodel.response?.data
                    
                     DispatchQueue.main.async {
                     self.homeTitle.text = self.titletext
@@ -163,11 +180,16 @@ extension RootViewController: UITableViewDataSource {
             if section == 0 {
             return 1
         } else {
-            return MenuData.count
+            return AppData.shared.MenuData.count
     }
         }
         else {
-            return homeData.count
+            if issetting {
+                return settingsData.count
+            }else {
+                return AppData.shared.homeData.count
+            }
+            
         }
             
     }
@@ -181,16 +203,24 @@ extension RootViewController: UITableViewDataSource {
             } else if indexPath.section == 1 {
                 if let cell = menuTableview.dequeueReusableCell(withIdentifier: "MenuTableViewCell", for: indexPath) as? MenuTableViewCell {
     //                cell.menuTitle.text = MenuData[indexPath.row].title
-                    cell.configureUI(menu: MenuData[indexPath.row])
+                    cell.configureUI(menu: AppData.shared.MenuData[indexPath.row])
                     return cell
                 }
                 
             }
         }
         else {
-            if let cell = homeTableview.dequeueReusableCell(withIdentifier: "CarousalTableViewCell", for: indexPath) as? CarousalTableViewCell{
-                cell.ConfigUI(playlist: homeData[indexPath.row])
-                return cell
+            if issetting {
+                if let cell = homeTableview.dequeueReusableCell(withIdentifier: "settingitemTableViewCell", for: indexPath) as? settingitemTableViewCell {
+                    cell.configureUI(setting: settingsData[indexPath.row])
+                    return cell
+                }
+                
+            } else {
+                if let cell = homeTableview.dequeueReusableCell(withIdentifier: "CarousalTableViewCell", for: indexPath) as? CarousalTableViewCell{
+                    cell.ConfigUI(playlist: AppData.shared.homeData[indexPath.row])
+                    return cell
+                }
             }
         }
         
@@ -210,33 +240,65 @@ extension RootViewController: UITableViewDelegate {
             }
         }
         else {
-        return 200
+            if issetting {
+                return 70
+            } else {
+                return 200
+            }
+        
         }
         
     }
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         if tableView == menuTableview {
             
-            print("selected Menu: ", MenuData[indexPath.row].title)
-            if let id = MenuData[indexPath.row].id {
+            print("selected Menu: ", AppData.shared.MenuData[indexPath.row].title)
+            if let id = AppData.shared.MenuData[indexPath.row].id {
+                for i in 0..<AppData.shared.MenuData.count{
+                    if i == indexPath.row {
+                        AppData.shared.MenuData[i].isselected = true
+                    } else {
+                        AppData.shared.MenuData[i].isselected = false
+                    }
+                }
+                
+                menuTableview.reloadData()
+                issetting = false
                 menuTapped()
-                if let data = allHomeData[String(id)]{
+                if let data = AppData.shared.allHomeData[String(id)]{
                     homeTitle.text = data.title
-                    homeData = data.playlists ?? []
+                    AppData.shared.homeData = data.playlists ?? []
                     homeTableview.reloadData()
                     print("No Api call done")
                 }
                 else{
                 self.getHomeData(homeid: String(id))
                     print("Api call done")
-            
                 }
                 
             }
-        }
+        } else {
+            if issetting {
+                if settingsData[indexPath.row].settingtype == .account {
+                    print("Going to my account")
+                }else if settingsData[indexPath.row].settingtype == .language {
+                    print("Going to Language")
+                }else if settingsData[indexPath.row].settingtype == .contact {
+                    print("Going to contact")
+                }else if settingsData[indexPath.row].settingtype == .aboutus {
+                    print("Going to aboutus")
+                }else if settingsData[indexPath.row].settingtype == .myactivity {
+                    print("Going to myactivity")
+                }else if settingsData[indexPath.row].settingtype == .termsofuse {
+                    print("Going to termsofuse")
+                }else if settingsData[indexPath.row].settingtype == .AppVersion {
+                    print("Going to AppVersion ")
+                }else if settingsData[indexPath.row].settingtype == .privacy {
+                print("Going to privacy")
+         }
+      }
     }
+
+  }
 }
-
-
-
 
